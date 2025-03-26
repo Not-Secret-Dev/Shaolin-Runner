@@ -1,0 +1,62 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+main .headings {
+  width: 30%;
+  margin: 12px;
+  outline: 2px;
+  display: flex;
+  flex-direction: column;
+}
+
+.headings .head {
+  display: flex;
+  align-items: center;
+}
+
+.headings .head h1 {
+  text-align: center;
+}
+
+main .headings .runningSprite {
+  background: url("/public/Assets/Images/Assets/shaolin_running_strip.png")
+    no-repeat;
+  margin-top: 12px;
+  margin-right: 12px;
+  margin-left: 12px;
+  width: 45px;
+  height: 61px;
+  animation: play 0.8s steps(5) infinite;
+}
+
+main .headings .rs2 {
+  transform: scaleX(-1);
+}
+
+#GameCanvas {
+  outline: 2px solid;
+  width: 70%;
+  margin: 12px;
+}
+
+@keyframes play {
+  from {
+    background-position: 0px;
+  }
+  to {
+    background-position: -225px;
+  }
+}
