@@ -1,5 +1,5 @@
 import "./style.css";
-import Phaser, { Physics, Scenes } from "phaser"; // Importing Phaser
+import Phaser from "phaser"; // Importing Phaser
 
 // Game Specific Constants
 const windowSize = {
@@ -14,8 +14,9 @@ const jumpVelocity = -200;
 class GameScene extends Phaser.Scene {
   constructor() {
     super("game-scene");
-    this.player;
-    this.cursor;
+    this.player = null;
+    this.fireballs = null;
+    this.cursor = null;
   }
 
   preload() {
@@ -35,6 +36,7 @@ class GameScene extends Phaser.Scene {
       "bg_floor",
       "/Assets/Images/backgrounds/shaolin_background_floor.png"
     );
+
     this.load.spritesheet(
       "runSheet",
       "/Assets/Images/Assets/shaolin_running_strip.png",
@@ -44,6 +46,7 @@ class GameScene extends Phaser.Scene {
         endFrame: 4,
       }
     );
+
     this.load.spritesheet(
       "jumpSheet",
       "/Assets/Images/Assets/shaolin_jump_strip.png",
@@ -51,6 +54,16 @@ class GameScene extends Phaser.Scene {
         frameWidth: 36,
         frameHeight: 59,
         endFrame: 2,
+      }
+    );
+
+    this.load.spritesheet(
+      "fireball",
+      "/Assets/Images/Misc/fireballSpritesheet.png",
+      {
+        frameWidth: 23,
+        frameHeight: 32,
+        endFrame: 3, // Ensure this matches the actual frame count
       }
     );
   }
@@ -75,14 +88,6 @@ class GameScene extends Phaser.Scene {
         "bg_floor"
       )
       .setOrigin(0, 0);
-    this.ground = this.add.rectangle(
-      windowSize.width / 2,
-      playerRunningLevel + 1,
-      windowSize.width,
-      20,
-      0x00ff00
-    );
-    this.physics.add.existing(this.ground, true); // Make it a static body
 
     // Player Setup
     this.player = this.physics.add.sprite(
@@ -92,15 +97,12 @@ class GameScene extends Phaser.Scene {
     );
     this.player.setCollideWorldBounds(true);
 
-    this.ground.setVisible(false); // Hide the ground
-    this.physics.add.collider(this.player, this.ground); // Enable collision
-
     // Player Animation
     this.anims.create({
       key: "run",
-      frames: this.anims.generateFrameNumbers("runSheet", { start: 0, end: 4 }), // start to end frames
+      frames: this.anims.generateFrameNumbers("runSheet", { start: 0, end: 4 }),
       frameRate: 10,
-      repeat: -1, // for looping
+      repeat: -1,
     });
 
     this.anims.create({
@@ -108,12 +110,12 @@ class GameScene extends Phaser.Scene {
       frames: this.anims.generateFrameNumbers("jumpSheet", {
         start: 0,
         end: 2,
-      }), // start to end frames
+      }),
       frameRate: 10,
       repeat: 0,
     });
 
-    // playing player animation
+    // Playing player animation
     this.player.play("run");
 
     this.player.on("animationcomplete", (anim) => {
@@ -124,6 +126,50 @@ class GameScene extends Phaser.Scene {
 
     // Keys and cursor setup
     this.cursor = this.input.keyboard.createCursorKeys();
+
+    // Fireball Group
+    this.fireballs = this.physics.add.group();
+
+    this.anims.create({
+      key: "fireball_anim",
+      frames: this.anims.generateFrameNumbers("fireball", {
+        frames: [0, 1, 2, 3],
+      }), // Adjusted for correct frames
+      frameRate: 10,
+      repeat: -1,
+    });
+
+    // Generate fireballs
+    this.time.addEvent({
+      delay: Phaser.Math.Between(1000, 2500), // Fireball spawns between every 2 seconds
+      callback: this.spawnFireball,
+      callbackScope: this,
+      loop: true,
+    });
+
+    // Add collision detection
+    this.physics.add.overlap(this.player, this.fireballs, () => {
+      this.gameOver();
+    });
+
+    // Fix AudioContext issue (Resume on user interaction)
+    this.input.once("pointerdown", () => {
+      this.sound.context.resume();
+    });
+  }
+
+  spawnFireball() {
+    const fireball = this.fireballs.create(
+      windowSize.width,
+      playerRunningLevel - 10,
+      "fireball"
+    );
+    fireball.setVelocityX(-200);
+    fireball.body.allowGravity = false;
+    fireball.setRotation(3 / 1.9);
+    fireball.play("fireball_anim");
+    fireball.body.setSize(fireball.width * 0.8, fireball.height * 0.8);
+    fireball.body.setOffset(fireball.width * 0.1, fireball.height * 0.1);
   }
 
   update() {
@@ -134,10 +180,24 @@ class GameScene extends Phaser.Scene {
     this.bg_floor.tilePositionX += 2;
 
     // Player Jump Mechanics
-    if ((this.cursor.space.isDown || this.cursor.up.isDown) && this.player.body.blocked.down) {
+    if (
+      (this.cursor.space.isDown || this.cursor.up.isDown) &&
+      this.player.body.blocked.down
+    ) {
       this.player.setVelocityY(jumpVelocity);
       this.player.play("jump", true);
     }
+
+    // Fireball Management
+    this.fireballs.children.iterate((fireball) => {
+      if (fireball && fireball.x < -fireball.width) {
+        fireball.destroy();
+      }
+    });
+  }
+
+  gameOver() {
+    this.scene.restart();
   }
 }
 
@@ -151,7 +211,7 @@ const config = {
     default: "arcade",
     arcade: {
       gravity: { y: gravityVal },
-      debug: false,
+      debug: true,
     },
   },
   scene: [GameScene],
